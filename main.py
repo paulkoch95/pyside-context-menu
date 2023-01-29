@@ -20,7 +20,8 @@ class RichContextMenu(QWidget):
 
         self.layout = QGridLayout()
         self.layout.setSpacing(0)
-        self.layout.setContentsMargins(0,0,0,0)
+        # self.layout.setContentsMargins(0,0,0,0)
+        # self.setStyleSheet("QWidget { background: darkGray;}")
 
         self.menue_style_sheet = """
                                 QMenu {
@@ -31,7 +32,7 @@ class RichContextMenu(QWidget):
                                 }
                                 QMenu:item {
                                     color: white;
-                                    padding: 4px;
+                                    padding: 5px;
                                 }
                                 """
 
@@ -72,11 +73,13 @@ class RichContextMenu(QWidget):
             temp_action = QAction(action_icon[0], str(action_icon[1]), self.primary_menue)
             self.sub_menue_all.addAction(temp_action)
 
+        self.sub_menue_all.setContentsMargins(5,0,0,0)
+
         self.primary_menue.addMenu(self.sub_m)
         self.primary_menue.addMenu(self.sub_menue_nodes)
         self.primary_menue.addSeparator()
         self.primary_menue.addMenu(self.sub_menue_all)
-        self.primary_menue.updateGeometry()
+        self.primary_menue.setFixedWidth(150)
 
 
         self.search_results_menu = QMenu()
