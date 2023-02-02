@@ -1,6 +1,6 @@
 import os
 # MacOS Specific Fix, not necessary on version < BigSur and other Posix
-os.environ['QT_MAC_WANTS_LAYER'] = '1'
+# os.environ['QT_MAC_WANTS_LAYER'] = '1'
 
 from PySide2.QtWidgets import QApplication, QMainWindow, QGraphicsScene, QGraphicsView, QShortcut, QWidget, QVBoxLayout, QLineEdit, QMenu, QGridLayout, QAction, QLayout
 from PySide2.QtGui import QFont, QKeySequence, QCursor, QIcon
@@ -18,7 +18,9 @@ class RichContextMenu(QWidget):
         super(RichContextMenu, self).__init__(parent)
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.options = []
-        self.icons = self.load_icons()
+        self.block_icons = self.load_icons("./total_icons/blocks")
+        self.node_icons = self.load_icons("./total_icons/nodes")
+        self.all_icons = self.load_icons("./total_icons/all")
         self.layout = QGridLayout()
         self.layout.setSpacing(0)
 
@@ -77,21 +79,21 @@ class RichContextMenu(QWidget):
         self.sub_m.aboutToHide.connect(lambda: self.sub_prevent_closing(self.sub_m))
 
         self.sub_m.setTitle("Blocks")
-        self.blocks_menue_items = self.filter_icon_list_by_name(self.icons, ["Arm", "Leg", "Spine", "Root"])
+        self.blocks_menue_items = self.block_icons
         self.sub_m.addActions([QAction(action_icon[0], str(action_icon[1]), self.primary_menue) for action_icon in self.blocks_menue_items])
 
         self.sub_menue_nodes = QMenu(self.primary_menue)
         self.sub_menue_nodes.aboutToHide.connect(lambda: self.sub_prevent_closing(self.sub_menue_nodes))
 
         self.sub_menue_nodes.setTitle("Post Build Nodes")
-        self.sub_menue_nodes_items = self.filter_icon_list_by_name(self.icons, ["Chain", "Root", "Singlepivot"])
+        self.sub_menue_nodes_items = self.node_icons
         self.sub_menue_nodes.addActions([QAction(action_icon[0], str(action_icon[1]), self.primary_menue) for action_icon in self.sub_menue_nodes_items])
 
         self.sub_menue_all = QMenu(self.primary_menue)
         self.sub_menue_all.aboutToHide.connect(lambda: self.sub_prevent_closing(self.sub_menue_all))
 
         self.sub_menue_all.setTitle("All")
-        self.sub_menue_all.addActions([QAction(action_icon[0], str(action_icon[1]), self.primary_menue) for action_icon in self.icons])
+        self.sub_menue_all.addActions([QAction(action_icon[0], str(action_icon[1]), self.primary_menue) for action_icon in self.all_icons])
 
         self.sub_menue_all.setContentsMargins(5, 0, 0, 0)
 
@@ -101,15 +103,25 @@ class RichContextMenu(QWidget):
         self.primary_menue.addMenu(self.sub_menue_all)
         self.primary_menue.setFixedWidth(150)
 
+        self.sub_menue_nodes.setStyleSheet("""QMenu:item {margin-left: 8px;}""")
+        self.sub_m.setStyleSheet("""QMenu:item {margin-left: 8px;}""")
+        self.sub_menue_all.setStyleSheet("""QMenu:item {margin-left: 8px;}""")
+
+    def showEvent(self, event):
+        self.search_menu.setText("")
+        super().showEvent(event)
+
     @Slot(QAction)
     def act_on_action(self, action: QAction) -> None:
         """ Here you can add logic for what to do when an entry was clicked. """
-        print("Entry was clicked!", action.text())
+        self.setVisible(False)
         self.primary_menue.setVisible(True)
 
-    def load_icons(self) -> list[list[QIcon, str]]:
+        print("Entry was clicked!", action.text())
+
+    def load_icons(self, dir: str) -> list[list[QIcon, str]]:
         """ Load images and extract entry names from Image Names"""
-        self.icon_dir = QDir("./total_icons")
+        self.icon_dir = QDir(dir)
         self.icon_files = self.icon_dir.entryInfoList(["*.png"])
 
         icons = []
