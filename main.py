@@ -4,9 +4,10 @@ os.environ['QT_MAC_WANTS_LAYER'] = '1'
 
 from PySide2.QtWidgets import QApplication, QMainWindow, QGraphicsScene, QGraphicsView, QShortcut, QWidget, QVBoxLayout, QLineEdit, QMenu, QGridLayout, QAction, QLayout, QCompleter
 from PySide2.QtGui import QFont, QKeySequence, QCursor, QIcon
-from PySide2.QtCore import Qt, Slot, QDir, QFileInfo
+from PySide2.QtCore import Qt, Slot, QDir, QFileInfo, QEvent
 import sys
 import difflib
+
 
 class RichContextMenu(QWidget):
 
@@ -52,11 +53,12 @@ class RichContextMenu(QWidget):
         self.search_menu.setPlaceholderText("search...")
         self.search_menu.setStyleSheet("QLineEdit { border: 2px solid black; background-color: white;}")
         self.search_menu.textChanged[str].connect(self.search_results)
+        self.search_menu.installEventFilter(self)
 
         self.text_completer = QCompleter([lit.capitalize() for lit in self.options], self)
         print("opt", self.options)
         self.text_completer.setCaseSensitivity(Qt.CaseInsensitive)
-        self.search_menu.setCompleter(self.text_completer)
+        # self.search_menu.setCompleter(self.text_completer)
 
 
         ########################################
@@ -119,6 +121,8 @@ class RichContextMenu(QWidget):
         self.all_menu.setFixedWidth(150)
         self.primary_menue.addMenu(self.all_menu)
 
+        self.installEventFilter(self)
+
     def showEvent(self, event):
         self.search_menu.setText("")
         super().showEvent(event)
@@ -143,6 +147,7 @@ class RichContextMenu(QWidget):
             }
         # self.options = icons.keys()
         return icons
+
     def load_icons(self, dir: list[str]) -> list[list[QIcon, str]]:
         """ Load images and extract entry names from Image Names"""
 
@@ -180,6 +185,7 @@ class RichContextMenu(QWidget):
         self.updateGeometry()
         self.search_results_menu.updateGeometry()
         self.primary_menue.updateGeometry()
+        self.search_results_menu.setFocus()
 
     def prevent_deletion(self, menu: QMenu) -> None:
         """ Prevent Qmenu from closing """
@@ -192,6 +198,15 @@ class RichContextMenu(QWidget):
     def filter_icon_list_by_name(self, icon_list: list[list[QIcon, str]], filter: list[str]):
         """ Find QIcon in List of QIcons and Strings based on List of desired results """
         return [opt for opt in icon_list if opt[1].lower() in filter]
+
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.KeyRelease:
+            if event.key() != Qt.Key_Left and event.key() != Qt.Key_Right and event.key() != Qt.Key_Up and event.key() != Qt.Key_Down:
+                self.search_menu.setFocus()
+            else:
+                self.primary_menue.setFocus()
+        return super().eventFilter(obj, event)
+
 
 class Window(QMainWindow):
     def __init__(self):
@@ -225,6 +240,10 @@ class Window(QMainWindow):
             self.rcm.setVisible(True)
             self.rcm.move(mouse_position)
             self.rcm.primary_menue.setVisible(True)
+
+            self.active_action = self.rcm.primary_menue.actions()[0]
+            self.rcm.primary_menue.setActiveAction(self.active_action)
+
         else:
             self.rcm.setVisible(False)
 
