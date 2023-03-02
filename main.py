@@ -109,6 +109,7 @@ class RichContextMenu(QWidget):
                         all_actions.append(temp_act)
 
             m_sub.updateGeometry()
+            m_sub.installEventFilter(self)
             self.primary_menue.addMenu(m_sub)
 
             m_sub.setStyleSheet("""QMenu:item {margin-left: 8px;}""")
@@ -122,6 +123,7 @@ class RichContextMenu(QWidget):
         self.primary_menue.addMenu(self.all_menu)
 
         self.installEventFilter(self)
+
 
     def showEvent(self, event):
         self.search_menu.setText("")
@@ -181,6 +183,8 @@ class RichContextMenu(QWidget):
                 self.search_results_menu.addAction(self.loaded_icons.get(result).get("icon"), result.capitalize())
             else:
                 self.search_results_menu.addAction(QIcon(), result.capitalize())
+        print("Actions: ", self.search_results_menu.actions())
+
 
         self.updateGeometry()
         self.search_results_menu.updateGeometry()
@@ -200,10 +204,18 @@ class RichContextMenu(QWidget):
         return [opt for opt in icon_list if opt[1].lower() in filter]
 
     def eventFilter(self, obj, event):
+        # print("Event: ", event)
         if event.type() == QEvent.KeyRelease:
             if event.key() != Qt.Key_Left and event.key() != Qt.Key_Right and event.key() != Qt.Key_Up and event.key() != Qt.Key_Down:
+                if len(self.search_menu.text()) == 0 and event.key() != Qt.Key_Tab:
+                    self.search_menu.setText(event.text())
                 self.search_menu.setFocus()
-            else:
+            elif len(self.search_menu.text()) > 0 and len(self.search_results_menu.actions())>0 and event.key() == Qt.Key_Right:
+                self.search_results_menu.setFocus()
+            elif len(self.search_menu.text()) > 0 and len(self.search_results_menu.actions()) and event.key() == Qt.Key_Left:
+                self.search_results_menu.setVisible(False)
+                self.primary_menue.setFocus()
+            elif len(self.search_menu.text()) == 0:
                 self.primary_menue.setFocus()
         return super().eventFilter(obj, event)
 
