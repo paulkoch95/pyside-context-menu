@@ -120,11 +120,12 @@ class RichContextMenu(QWidget):
         self.all_menu.setTitle("All")
         self.all_menu.addActions(all_actions)
         self.all_menu.setFixedWidth(150)
+        self.all_menu.installEventFilter(self)
         self.primary_menue.addMenu(self.all_menu)
 
         self.installEventFilter(self)
 
-
+        self.search_term = ""
     def showEvent(self, event):
         self.search_menu.setText("")
         super().showEvent(event)
@@ -183,8 +184,14 @@ class RichContextMenu(QWidget):
                 self.search_results_menu.addAction(self.loaded_icons.get(result).get("icon"), result.capitalize())
             else:
                 self.search_results_menu.addAction(QIcon(), result.capitalize())
-        print("Actions: ", self.search_results_menu.actions())
-
+        self.hide_all_expanded_subentries(self.primary_menue)
+        # print("Actions: ", self.search_results_menu.actions())
+        try:
+            self.search_results_menu.setFocus()
+            self.search_results_menu.setActiveAction(self.search_results_menu.actions()[0])
+            self.search_results_menu.popup()
+        except Exception as e:
+            pass
 
         self.updateGeometry()
         self.search_results_menu.updateGeometry()
@@ -203,20 +210,43 @@ class RichContextMenu(QWidget):
         """ Find QIcon in List of QIcons and Strings based on List of desired results """
         return [opt for opt in icon_list if opt[1].lower() in filter]
 
+    def hide_all_expanded_subentries(self, menu: QMenu) -> None:
+        """ Helper function to hide all expanded submenus in a QMenu instance.
+        Used by the autocomplete function to collapse exapnded submenus """
+        for entry in menu.actions():
+            try:
+                entry.menu().hide()
+            except AttributeError as e:
+                pass
+
     def eventFilter(self, obj, event):
-        # print("Event: ", event)
+        """ Event filter responsible for the navigation of the Qmenu """
         if event.type() == QEvent.KeyRelease:
-            if event.key() != Qt.Key_Left and event.key() != Qt.Key_Right and event.key() != Qt.Key_Up and event.key() != Qt.Key_Down:
-                if len(self.search_menu.text()) == 0 and event.key() != Qt.Key_Tab:
-                    self.search_menu.setText(event.text())
-                self.search_menu.setFocus()
-            elif len(self.search_menu.text()) > 0 and len(self.search_results_menu.actions())>0 and event.key() == Qt.Key_Right:
+            # check if any key has been pressed
+            if event.key() != Qt.Key_Left and event.key() != Qt.Key_Right and event.key() != Qt.Key_Up and event.key() \
+                    != Qt.Key_Down:
+                # there is not text in the search bar? lets add it!
+                if len(self.search_menu.text()) >= 0 and event.key() != Qt.Key_Tab:
+                    self.search_menu.setText(self.search_menu.text() + event.text())
+                # convenient delete function of the search entry. als eliminates strange behaviour
+                # with non alpha characters.
+                if len(self.search_menu.text()) > 0 and event.key() == Qt.Key_Backspace:
+                    self.search_menu.setText("")
+                return True
+            elif len(self.search_menu.text()) > 0 and len(self.search_results_menu.actions()) > 0 and \
+                    event.key() == Qt.Key_Right:
+                # focus search results menu when there are results
                 self.search_results_menu.setFocus()
-            elif len(self.search_menu.text()) > 0 and len(self.search_results_menu.actions()) and event.key() == Qt.Key_Left:
+                return True
+            elif len(self.search_menu.text()) > 0 and len(self.search_results_menu.actions()) and \
+                    event.key() == Qt.Key_Left:
+                # navigate back to the primary menue when left key was pressed.
                 self.search_results_menu.setVisible(False)
                 self.primary_menue.setFocus()
+                return True
             elif len(self.search_menu.text()) == 0:
                 self.primary_menue.setFocus()
+
         return super().eventFilter(obj, event)
 
 
@@ -253,8 +283,13 @@ class Window(QMainWindow):
             self.rcm.move(mouse_position)
             self.rcm.primary_menue.setVisible(True)
 
-            self.active_action = self.rcm.primary_menue.actions()[0]
-            self.rcm.primary_menue.setActiveAction(self.active_action)
+            self.rcm.primary_menue.setFocus()
+            # self.active_action = self.rcm.primary_menue.actions()[0]
+            # self.rcm.primary_menue.setActiveAction(self.active_action)
+
+            # self.active_action.menu().setVisible(False)
+            # print("Type: ", type(self.active_action))
+            # self.active_action.hide()
 
         else:
             self.rcm.setVisible(False)
