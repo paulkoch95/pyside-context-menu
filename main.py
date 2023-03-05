@@ -284,12 +284,6 @@ class Window(QMainWindow):
             self.rcm.primary_menue.setVisible(True)
 
             self.rcm.primary_menue.setFocus()
-            # self.active_action = self.rcm.primary_menue.actions()[0]
-            # self.rcm.primary_menue.setActiveAction(self.active_action)
-
-            # self.active_action.menu().setVisible(False)
-            # print("Type: ", type(self.active_action))
-            # self.active_action.hide()
 
         else:
             self.rcm.setVisible(False)
