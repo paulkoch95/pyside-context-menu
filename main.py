@@ -3,7 +3,7 @@ import os
 os.environ['QT_MAC_WANTS_LAYER'] = '1'
 
 from PySide2.QtWidgets import QApplication, QMainWindow, QGraphicsScene, QGraphicsView, QShortcut, QWidget, QVBoxLayout, QLineEdit, QMenu, QGridLayout, QAction, QLayout, QCompleter
-from PySide2.QtGui import QFont, QKeySequence, QCursor, QIcon
+from PySide2.QtGui import QFont, QKeySequence, QCursor, QIcon, QKeyEvent
 from PySide2.QtCore import Qt, Slot, QDir, QFileInfo, QEvent
 import sys
 import difflib
@@ -19,8 +19,9 @@ class RichContextMenu(QWidget):
         super(RichContextMenu, self).__init__(parent)
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.options = []
-        # self.all_icons = self.load_icons(["./total_icons"])
         self.loaded_icons = self.load_icons_dict("./total_icons")
+
+        self.installEventFilter(self)
 
         self.layout = QGridLayout()
         self.layout.setSpacing(0)
@@ -43,7 +44,6 @@ class RichContextMenu(QWidget):
         ##################################
         menu = {"Blocks": ["arm", "leg", "spine", "root"], "Post Build Nodes": ["constraint", "autoWeights"], "Arbitrary Nodes": ["hand", "flateye", "brow"]}
         self.options = [item for sublist in menu.values() for item in sublist]
-        print("All options: ", self.options)
         self.build_dynamic_menu(menu)
 
         ####################
@@ -53,10 +53,10 @@ class RichContextMenu(QWidget):
         self.search_menu.setPlaceholderText("search...")
         self.search_menu.setStyleSheet("QLineEdit { border: 2px solid black; background-color: white;}")
         self.search_menu.textChanged[str].connect(self.search_results)
-        self.search_menu.installEventFilter(self)
+        # self.search_menu.installEventFilter(self.search_menu)
+        self.search_menu.setFocusPolicy(Qt.StrongFocus)
 
         self.text_completer = QCompleter([lit.capitalize() for lit in self.options], self)
-        print("opt", self.options)
         self.text_completer.setCaseSensitivity(Qt.CaseInsensitive)
         # self.search_menu.setCompleter(self.text_completer)
 
@@ -67,6 +67,7 @@ class RichContextMenu(QWidget):
         self.search_results_menu = QMenu()
         self.search_results_menu.setStyleSheet(self.menue_style_sheet)
         self.search_results_menu.triggered.connect(self.act_action)
+
 
         ################
         # Layut Widget #
@@ -81,8 +82,7 @@ class RichContextMenu(QWidget):
         self.setFixedSize(self.layout.sizeHint())
 
     def build_dynamic_menu(self, menu_struct: dict[str, list[str]]):
-        print("loaded icons", self.loaded_icons)
-
+        """ Function to build primary menue dynamically on runtime """
         self.primary_menue = QMenu()
         self.primary_menue.setStyleSheet(self.menue_style_sheet)
         self.primary_menue.aboutToHide.connect(lambda: self.prevent_deletion(self.primary_menue))
@@ -219,34 +219,15 @@ class RichContextMenu(QWidget):
             except AttributeError as e:
                 pass
 
-    def eventFilter(self, obj, event):
-        """ Event filter responsible for the navigation of the Qmenu """
+    def eventFilter(self, obj, event) -> bool:
+        """
+        Custom event filter function to improve "on the spot" search in the context menue.
+        Manually captures keystrokes during normal use of the widget.
+        """
         if event.type() == QEvent.KeyRelease:
-            # check if any key has been pressed
-            if event.key() != Qt.Key_Left and event.key() != Qt.Key_Right and event.key() != Qt.Key_Up and event.key() \
-                    != Qt.Key_Down:
-                # there is not text in the search bar? lets add it!
-                if len(self.search_menu.text()) >= 0 and event.key() != Qt.Key_Tab:
-                    self.search_menu.setText(self.search_menu.text() + event.text())
-                # convenient delete function of the search entry. als eliminates strange behaviour
-                # with non alpha characters.
-                if len(self.search_menu.text()) > 0 and event.key() == Qt.Key_Backspace:
-                    self.search_menu.setText("")
+            if event.key() >= Qt.Key_A and event.key() <= Qt.Key_Z and self.search_menu.hasFocus() == False and self.search_results_menu.hasFocus() == False:
+                self.search_menu.setText(self.search_menu.text() + event.text())
                 return True
-            elif len(self.search_menu.text()) > 0 and len(self.search_results_menu.actions()) > 0 and \
-                    event.key() == Qt.Key_Right:
-                # focus search results menu when there are results
-                self.search_results_menu.setFocus()
-                return True
-            elif len(self.search_menu.text()) > 0 and len(self.search_results_menu.actions()) and \
-                    event.key() == Qt.Key_Left:
-                # navigate back to the primary menue when left key was pressed.
-                self.search_results_menu.setVisible(False)
-                self.primary_menue.setFocus()
-                return True
-            elif len(self.search_menu.text()) == 0:
-                self.primary_menue.setFocus()
-
         return super().eventFilter(obj, event)
 
 
